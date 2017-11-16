@@ -313,7 +313,7 @@ saver <- function(x, size.factor = NULL, parallel = FALSE, nzero = 10,
   }
   if (pred.genes.only) {
     for (i in 1:3) {
-      out[[i]] <- out[[i]][pred.genes, ]
+      out[[i]] <- out[[i]][pred.genes, , drop = FALSE]
     }
     nvar.vec <- nvar.vec[pred.genes]
     gene.names <- rownames(x)[pred.genes]
