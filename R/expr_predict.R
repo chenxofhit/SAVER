@@ -40,19 +40,16 @@ expr.predict <- function(x, y, pred.cells = 1:length(y), dfmax = 300,
     set.seed(seed)
   if (sum(y) == 0)
     return(list(mu = rep(0, length(y)), nvar = 0))
-  # cv <- tryCatch(
-  #   suppressWarnings(glmnet::cv.glmnet(x[pred.cells, ], y[pred.cells],
-  #                                      family="poisson", dfmax = dfmax,
-  #                                      nfolds = nfolds, nlambda = nlambda)),
-  #   error = function(cond) {
-  #     if (verbose)
-  #       message(cond, "\n")
-  #     return(NA)
-  #   }
-  # )
-  cv <- glmnet::cv.glmnet(x[pred.cells, ], y[pred.cells],
+  cv <- tryCatch(
+    suppressWarnings(glmnet::cv.glmnet(x[pred.cells, ], y[pred.cells],
                                        family="poisson", dfmax = dfmax,
-                                       nfolds = nfolds, nlambda = nlambda)
+                                       nfolds = nfolds, nlambda = nlambda)),
+    error = function(cond) {
+      if (verbose)
+        message(cond, "\n")
+      return(NA)
+    }
+  )
   if (length(cv) == 1) {
     mu <- rep(mean(y[pred.cells]), length(y))
     nvar <- 0
