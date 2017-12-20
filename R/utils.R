@@ -13,7 +13,7 @@ clean.data <- function(x) {
   if (min(colSums(x)) == 0) {
     nzerocells <- sum(colSums(x) == 0)
     x <- x[, colSums(x) != 0]
-    message("Removing ", nzerocells, " cells with zero expression.")
+    message("Removing ", nzerocells, " cell(s) with zero expression.")
   }
   x
 }
@@ -62,4 +62,14 @@ get.pred.genes <- function(pred.genes, npred, ngenes) {
     stop("npred must be less than number of rows in x")
   }
   pred.genes
+}
+
+# split genes for parallel
+get.chunk <- function(x, n) {
+  split(x, cut(seq_along(x), n, labels = FALSE))
+}
+
+# have each foreach output be less than 500 Mb
+get.nchunk <- function(x) {
+  as.numeric(ceiling(object.size(x)/(500*1024*1024)))
 }
