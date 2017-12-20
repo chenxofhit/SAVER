@@ -116,7 +116,6 @@ saver <- function(x, size.factor = NULL, npred = NULL, pred.cells = NULL,
 
   nworkers <- foreach::getDoParWorkers()
   message("Running SAVER with ", nworkers, " worker(s)")
-  nchunk <- get.nchunk(x, )
 
   lasso.genes <- intersect(good.genes, pred.genes)
   nonlasso.genes <- genes[!(genes %in% lasso.genes)]
