@@ -17,3 +17,49 @@ clean.data <- function(x) {
   }
   x
 }
+
+calc.size.factor <- function(x, size.factor, ncells) {
+  if (is.null(size.factor)) {
+    sf <- colSums(x)/mean(colSums(x))
+    scale.sf <- 1
+  } else if (length(size.factor) == ncells) {
+    sf <- size.factor/mean(size.factor)
+    scale.sf <- mean(size.factor)
+  } else if (size.factor == 1) {
+    sf <- rep(1, ncells)
+    scale.sf <- 1
+  } else if (min(size.factor) <= 0) {
+    stop("Size factor must be greater than 0")
+  } else {
+    stop("Not a valid size factor")
+  }
+  list(sf, scale.sf)
+}
+
+get.pred.cells <- function(pred.cells, ncells) {
+  if (!is.null(pred.cells)) {
+    if (min(pred.cells) < 1 |
+        max(pred.cells) > ncells) {
+      stop("pred.cells must be column indices of x")
+    }
+  } else {
+    pred.cells <- 1:ncells
+  }
+  pred.cells
+}
+
+get.pred.genes <- function(pred.genes, npred, ngenes) {
+  if (!is.null(pred.genes)) {
+    if (min(pred.genes) < 1 |
+        max(pred.genes) > ngenes) {
+      stop("pred.genes must be row indices of x")
+    }
+  } else if (is.null(npred)) {
+    pred.genes <- 1:ngenes
+  } else if (npred < ngenes) {
+    pred.genes <- order(rowMeans(x), decreasing = TRUE)[1:npred]
+  } else {
+    stop("npred must be less than number of rows in x")
+  }
+  pred.genes
+}
