@@ -23,7 +23,8 @@
 #'
 
 calc.maxcor <- function(x1, x2) {
-  cormat <- cor(x1, x2)
+  cormat <- suppressWarnings(cor(x1, x2))
+  cormat[is.na(cormat)] <- 0
   if (nrow(cormat) < ncol(cormat)) {
     cind <- sapply(rownames(cormat), function(x)
       which(x == colnames(cormat)))

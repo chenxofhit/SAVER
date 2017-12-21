@@ -1,13 +1,15 @@
 
 calc.cutoff <- function(x, x.est, npred, pred.cells, nworkers, output.se,
-                        verbose) {
-  iterx <- iterators::iter(as.matrix(x), by = "row",
-                           chunksize = ceiling(nrow(x)/nworkers))
+                        verbose, index) {
+  cs <- min(ceiling(nrow(x)/nworkers), 10)
+  iterx <- iterators::iter(x, by = "row", chunksize = cs)
+  itercount <- iterators::icount(ceiling(iterx$length/iterx$chunksize))
   n <- length(pred.cells)
   out <- suppressWarnings(
-    foreach::foreach(ix = iterx, .packages = c("glmnet", "SAVER")) {
+    foreach::foreach(ix = iterx, ind = itercount,
+                     .packages = c("glmnet", "SAVER", "iterators")) %dopar% {
       if (npred > 100) {
-        maxcor <- calc.maxcor(x.est, ix)
+        maxcor <- calc.maxcor(x.est, t(ix))
       } else {
         maxcor <- NULL
       }
@@ -15,7 +17,7 @@ calc.cutoff <- function(x, x.est, npred, pred.cells, nworkers, output.se,
       x.names <- rownames(ix)
       x.est.names <- colnames(x.est)
       est <- matrix(0, nrow(ix), ncol(ix))
-      if (output.se == TRUE) {
+      if (output.se) {
         se <- matrix(0, nrow(ix), col(ix))
       } else {
         se <- NULL
@@ -27,33 +29,21 @@ calc.cutoff <- function(x, x.est, npred, pred.cells, nworkers, output.se,
         sameind <- which(x.est.names == x.names[i])
         y <- ix[i, pred.cells]/sf[pred.cells]
         if (length(sameind) == 1) {
-          cv <- tryCatch(
-            suppressWarnings(glmnet::cv.glmnet(x.est[pred.cells, -sameind], y,
-                                               family="poisson", dfmax = 300,
-                                               nfolds = 5)),
-            error = function(cond) {
-              if (verbose)
-                message(cond, "\n")
-              return(NA)
-            }
-          )
+          pred.out <- expr.predict.cv(x.est[pred.cells, -sameind], y,
+                                      seed = (ind - 1)*cs + i)
         } else {
-          cv <- tryCatch(
-            suppressWarnings(glmnet::cv.glmnet(x.est[pred.cells, ], y,
-                                               family="poisson", dfmax = 300,
-                                               nfolds = 5)),
-            error = function(cond) {
-              if (verbose)
-                message(cond, "\n")
-              return(NA)
-            }
-          )
+          pred.out <- expr.predict.cv(x.est[pred.cells, ], y,
+                                      seed = (ind - 1)*cs + i)
         }
-        if (length(cv) == 1) {
-          mu <- rep(mean(y), n)
-          lambda.min[i] <- maxcor[i]*sd(y)*(n-1)/n
+        lambda.min[i] <- pred.out[[2]]
+        sd.cv[i] <- pred.out[[3]]
+        post <- calc.post(ix[i, ], pred.out[[1]], sf, scale.sf)
+        est[i, ] <- post[[1]]
+        if (output.se) {
+          se[i, ] <- post[[2]]
         }
       }
+      list(est, se, lambda.min, sd.cv)
     }
   )
 }

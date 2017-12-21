@@ -55,5 +55,5 @@ calc.post <- function(y, mu, sf, scale.sf) {
   lambda.hat <- post.alpha/post.beta
   se <- sqrt(post.alpha/post.beta^2)
   return(list(estimate = unname(ceiling(lambda.hat*1000*scale.sf)/1000),
-              se = unname(round(se*scale.sf, 3))))
+              se = unname(ceiling(se*1000*scale.sf)/1000)))
 }

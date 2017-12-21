@@ -16,16 +16,12 @@
 #'
 #' @param y A normalized expression count vector of the gene to be predicted.
 #'
-#' @param pred.cells Index of cells to use for prediction. Default is to use
-#' all cells.
 #'
 #' @param dfmax The number of genes to be included in the prediction. Default
 #' is 300.
 #'
 #' @param nfolds Number of folds to use in the cross-validation. Default is 5.
 #'
-#' @param nlambda Number of lambda to calculate in cross validation. Default is
-#' 5.
 #'
 #' @param seed Sets the seed for reproducible results.
 #'
@@ -33,13 +29,12 @@
 #' @return A vector of predicted gene expression.
 #'
 #' @export
-expr.predict <- function(x, y, pred.cells = 1:length(y), dfmax = 300,
-                         nfolds = 5, nlambda = 50, seed = NULL,
+expr.predict.cv <- function(x, y, dfmax = 300, nfolds = 5, seed = NULL,
                          verbose = FALSE) {
   if (!is.null(seed))
     set.seed(seed)
-  if (sum(y) == 0)
-    return(list(mu = rep(0, length(y)), nvar = 0))
+  if (sd(y) == 0)
+    return(list(rep(mean(y), length(y)), 0, 0))
   cv <- tryCatch(
     suppressWarnings(glmnet::cv.glmnet(x[pred.cells, ], y[pred.cells],
                                        family="poisson", dfmax = dfmax,
@@ -51,12 +46,15 @@ expr.predict <- function(x, y, pred.cells = 1:length(y), dfmax = 300,
     }
   )
   if (length(cv) == 1) {
-    mu <- rep(mean(y[pred.cells]), length(y))
-    nvar <- 0
+    mu <- rep(mean(y), length(y))
+    lambda.min <- 0
+    sd.cv <- 0
   } else {
     mu <- c(glmnet::predict.cv.glmnet(cv, newx = x, s = "lambda.min",
                                         type="response"))
-    nvar <- cv$nzero[which(cv$lambda == cv$lambda.min)]
+    lambda.min <- cv$lambda.min
+    min.ind <- which(cv$lambda == cv$lambda.min)
+    sd.cv <- (cv$cvm[min.ind] - cv$cvm[i]) / cv$cvsd[min.ind]
   }
-  return(list(mu = mu, nvar = nvar))
+  return(list(mu, lambda.min, sd.cv))
 }

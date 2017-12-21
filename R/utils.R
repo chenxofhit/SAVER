@@ -15,6 +15,9 @@ clean.data <- function(x) {
     x <- x[, colSums(x) != 0]
     message("Removing ", nzerocells, " cell(s) with zero expression.")
   }
+  if (is.null(rownames(x))) {
+    rownames(x) <- 1:np[1]
+  }
   x
 }
 
