@@ -6,7 +6,7 @@ calc.cutoff <- function(x, x.est, npred, pred.cells, nworkers, output.se,
   itercount <- iterators::icount(ceiling(iterx$length/iterx$chunksize))
   n <- length(pred.cells)
   out <- suppressWarnings(
-    foreach::foreach(ix = iterx, ind = itercount,
+    foreach::foreach(ix = iterx, ind = itercount, .combine = 'rbind',
                      .packages = c("glmnet", "SAVER", "iterators")) %dopar% {
       if (npred > 100) {
         maxcor <- calc.maxcor(x.est, t(ix))
@@ -43,7 +43,7 @@ calc.cutoff <- function(x, x.est, npred, pred.cells, nworkers, output.se,
           se[i, ] <- post[[2]]
         }
       }
-      list(est, se, lambda.min, sd.cv)
+      list(est, se, maxcor, lambda.min, sd.cv)
     }
   )
 }
