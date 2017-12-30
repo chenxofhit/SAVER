@@ -29,10 +29,12 @@ calc.maxcor <- function(x1, x2) {
     cind <- sapply(rownames(cormat), function(x)
       which(x == colnames(cormat)))
     rind <- which(sapply(cind, length) == 1)
+    cind <- unlist(cind)
   } else {
     rind <- sapply(colnames(cormat), function(x)
       which(x == rownames(cormat)))
     cind <- which(sapply(rind, length) == 1)
+    rind <- unlist(rind)
   }
   cormat[cbind(rind, cind)] <- 0
   apply(cormat, 2, function(x) max(abs(x)))
