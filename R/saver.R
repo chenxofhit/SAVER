@@ -89,7 +89,8 @@ saver <- function(x, size.factor = NULL, parallel = FALSE, nzero = 10,
                   npred = NULL, pred.cells = NULL, pred.genes = NULL,
                   pred.genes.only = FALSE, null.model = FALSE, dfmax = 300,
                   nfolds = 5, nlambda = 50, remove.zero.genes = FALSE,
-                  verbose = FALSE, predict.time = TRUE) {
+                  verbose = FALSE, predict.time = TRUE,
+                  lasso.path = NULL) {
   if (!is.matrix(x)) {
     x <- as.matrix(x)
     message("Converting x to matrix.")
@@ -229,6 +230,9 @@ saver <- function(x, size.factor = NULL, parallel = FALSE, nzero = 10,
         return(list(estimate = est, alpha = alpha, beta = beta,
                     nvar = unname(cv$nvar),
                     sd.cv = unname(cv$sd.cv)))
+      }
+      if (!is.null(lasso.path)) {
+        saveRDS(lasso, lasso.path)
       }
       out <- lapply(1:3, function(x) matrix(0, ngenes, ncells))
       for (i in 1:3) {
