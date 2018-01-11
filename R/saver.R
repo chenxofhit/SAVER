@@ -89,7 +89,7 @@ saver <- function(x, size.factor = NULL, parallel = FALSE, nzero = 10,
                   npred = NULL, pred.cells = NULL, pred.genes = NULL,
                   pred.genes.only = FALSE, null.model = FALSE, dfmax = 300,
                   nfolds = 5, nlambda = 50, remove.zero.genes = FALSE,
-                  verbose = FALSE, predict.time = TRUE,
+                  verbose = FALSE, predict.time = TRUE, estimate.only = FALSE,
                   lasso.path = NULL) {
   if (!is.matrix(x)) {
     x <- as.matrix(x)
@@ -222,8 +222,13 @@ saver <- function(x, size.factor = NULL, parallel = FALSE, nzero = 10,
         mu <- cv$mu
         post <- calc.post(c(xit), mu, sf, scale.sf)
         est <- unname(post$estimate)
-        alpha <- unname(post$alpha)
-        beta <- unname(post$beta)
+        if (estimate.only) {
+          alpha <- NULL
+          beta <- NULL
+        } else {
+          alpha <- unname(post$alpha)
+          beta <- unname(post$beta)
+        }
         if (verbose) {
           message(i)
         }
@@ -234,24 +239,39 @@ saver <- function(x, size.factor = NULL, parallel = FALSE, nzero = 10,
       if (!is.null(lasso.path)) {
         saveRDS(lasso, lasso.path)
       }
-      out <- lapply(1:3, function(x) matrix(0, ngenes, ncells))
-      for (i in 1:3) {
-        tempvec <- lapply(lasso, `[[`, i)
-        out[[i]][lasso.genes, ] <- matrix(unlist(tempvec),
-                                          nrow = length(tempvec), byrow = TRUE)
+      if (estimate.only) {
+        out <- list(matrix(0, ngenes, ncells), NULL, NULL)
+        tempvec <- lapply(lasso, `[[`, 1)
+        out[[1]][lasso.genes, ] <- matrix(unlist(tempvec),
+                                  nrow = length(tempvec), byrow = TRUE)
+        if (length(nonlasso.genes) > 0) {
+          nvar.vec[nonlasso.genes] <- 0
+          sd.vec[nonlasso.genes] <- 0
+          for (i in nonlasso.genes) {
+            post <- calc.post(x[i, ], mean(x[i, ]/sf), sf, scale.sf)
+            out[[1]][i, ] <- post$estimate
+          }
+        }
+      } else {
+        out <- lapply(1:3, function(x) matrix(0, ngenes, ncells))
+        for (i in 1:3) {
+          tempvec <- lapply(lasso, `[[`, i)
+          out[[i]][lasso.genes, ] <- matrix(unlist(tempvec),
+                                            nrow = length(tempvec), byrow = TRUE)
+          if (length(nonlasso.genes) > 0) {
+            nvar.vec[nonlasso.genes] <- 0
+            sd.vec[nonlasso.genes] <- 0
+            for (i in nonlasso.genes) {
+              post <- calc.post(x[i, ], mean(x[i, ]/sf), sf, scale.sf)
+              out[[1]][i, ] <- post$estimate
+              out[[2]][i, ] <- post$alpha
+              out[[3]][i, ] <- post$beta
+            }
+          }
+        }
       }
       nvar.vec[lasso.genes] <- unlist(lapply(lasso, `[[`, 4))
       sd.vec[lasso.genes] <- unlist(lapply(lasso, `[[`, 5))
-      if (length(nonlasso.genes) > 0) {
-        nvar.vec[nonlasso.genes] <- 0
-        sd.vec[nonlasso.genes] <- 0
-        for (i in nonlasso.genes) {
-          post <- calc.post(x[i, ], mean(x[i, ]/sf), sf, scale.sf)
-          out[[1]][i, ] <- post$estimate
-          out[[2]][i, ] <- post$alpha
-          out[[3]][i, ] <- post$beta
-        }
-      }
     } else {
       if (parallel & nworkers == 1) {
         message("Only one worker assigned! Running sequentially...")
@@ -331,8 +351,12 @@ saver <- function(x, size.factor = NULL, parallel = FALSE, nzero = 10,
     }
   }
   if (pred.genes.only) {
-    for (i in 1:3) {
-      out[[i]] <- out[[i]][pred.genes, , drop = FALSE]
+    if (estimate.only) {
+      out[[1]] <- out[[1]][pred.genes, , drop = FALSE]
+    } else {
+      for (i in 1:3) {
+        out[[i]] <- out[[i]][pred.genes, , drop = FALSE]
+      }
     }
     nvar.vec <- nvar.vec[pred.genes]
     sd.vec <- sd.vec[pred.genes]
@@ -342,8 +366,14 @@ saver <- function(x, size.factor = NULL, parallel = FALSE, nzero = 10,
     gene.names <- rownames(x)
     cell.names <- colnames(x)
   }
-  out.named <- lapply(out[1:3], function(x) {rownames(x) <- gene.names;
-  colnames(x) <- cell.names; x})
+  if (estimate.only) {
+    out.named <- out
+    rownames(out.named[[1]]) <- gene.names
+    colnames(out.named[[1]]) <- cell.names
+  } else {
+    out.named <- lapply(out[1:3], function(x) {rownames(x) <- gene.names;
+    colnames(x) <- cell.names; x})
+  }
   info <- list(size.factor = sf*scale.sf, nvar = nvar.vec, sd.cv = sd.vec,
                ngenes = ngenes, ncells = ncells, genes = gene.names,
                cells = cell.names)
